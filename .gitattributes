@@ -1,0 +1,6 @@
+*    binary                                                     
+                    
+**.[rR][sS]                                                     text=auto diff merge	
+**.[tt][oO][mM][lL]                                             text=auto diff merge
+.gitattributes                                                  text=auto diff merge
+.gitignore                                                      text=auto diff merge
