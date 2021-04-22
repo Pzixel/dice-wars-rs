@@ -1,5 +1,6 @@
-use iced::{Button, Column, Text, Settings, Application, Executor, Command, Element, Clipboard, Container, Length, Align, HorizontalAlignment, Canvas, Rectangle, Point, Color};
+use iced::{Button, Column, Text, Settings, Application, Executor, Command, Element, Clipboard, Container, Length, Align, HorizontalAlignment, Canvas, Rectangle, Point, Color, Size};
 use iced::canvas::{Geometry, Cursor, Path};
+use rand::random;
 
 const FIELD_SIZE: usize = 64;
 
@@ -11,6 +12,9 @@ pub enum Player {
     Player2
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+struct Dices(u8, u8);
+
 #[derive(Debug)]
 struct Game {
     state: GameState,
@@ -21,6 +25,7 @@ struct Cells([[CellOwner; FIELD_SIZE]; FIELD_SIZE]);
 
 #[derive(Debug)]
 struct DrawingPart {
+    dices: Option<Dices>,
     cells: Cells,
     canvas: iced::canvas::Cache,
 }
@@ -36,7 +41,11 @@ impl<Message> iced::canvas::Program<Message> for DrawingPart {
     fn draw(&self, bounds: Rectangle<f32>, cursor: Cursor) -> Vec<Geometry> {
         let x = self.canvas.draw(bounds.size(), |frame| {
             let space = Path::rectangle(Point::new(0.0, 0.0), frame.size());
-            frame.fill(&space, Color::BLACK)
+            frame.fill(&space, Color::BLACK);
+            if let Some(Dices(x, y)) = self.dices {
+                let dice_throw =  Path::rectangle(Point::new(0.0, 0.0), Size::new(frame.size().width/(x as f32), frame.size().height/(y as f32)));
+                frame.fill(&dice_throw, Color::from_rgb(0., 1., 0.));
+            }
         });
         vec![x]
     }
@@ -63,6 +72,7 @@ impl Application for Game {
         (Game{
             state: GameState {
                 drawing: DrawingPart {
+                    dices: Default::default(),
                     cells: Cells([[None; FIELD_SIZE]; FIELD_SIZE]),
                     canvas: Default::default()
                 },
@@ -78,6 +88,16 @@ impl Application for Game {
     }
 
     fn update(&mut self, message: Self::Message, clipboard: &mut Clipboard) -> Command<Self::Message> {
+        match message {
+            Message::ThrowDices => {
+                let new_dices: u8 = random();
+                let dice1 = (new_dices >> 4)%5 + 1;
+                let dice2 = new_dices%5 + 1;
+                self.state.drawing.dices = Some(Dices(dice1, dice2))
+            },
+            _ => {},
+        }
+        self.state.drawing.canvas.clear();
         Command::none()
     }
 
