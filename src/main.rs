@@ -5,7 +5,7 @@ use iced::{
 };
 use rand::random;
 
-const FIELD_SIZE: usize = 64;
+const FIELD_SIZE: usize = 16;
 
 type CellOwner = Option<Player>;
 
@@ -43,17 +43,41 @@ pub struct GameState {
 impl<Message> iced::canvas::Program<Message> for DrawingPart {
     fn draw(&self, bounds: Rectangle<f32>, cursor: Cursor) -> Vec<Geometry> {
         let x = self.canvas.draw(bounds.size(), |frame| {
-            let space = Path::rectangle(Point::new(0.0, 0.0), frame.size());
-            frame.fill(&space, Color::BLACK);
-            if let Some(Dices(x, y)) = self.dices {
-                let dice_throw = Path::rectangle(
-                    Point::new(0.0, 0.0),
-                    Size::new(
-                        frame.size().width / (x as f32),
-                        frame.size().height / (y as f32),
-                    ),
+            const MARGIN: f32 = 3.;
+            let cell_width = frame.size().width/(FIELD_SIZE as f32);
+            let cell_height = frame.size().height/(FIELD_SIZE as f32);
+
+            let get_cell_fill = |i: usize, j: usize| -> (Path, Path) {
+                let point= Point::new((i as f32) *cell_width, (j as f32)*cell_height);
+                let size = Size::new(
+                    cell_width,
+                    cell_height,
                 );
-                frame.fill(&dice_throw, Color::from_rgb(0., 1., 0.));
+                let cell_background = Path::rectangle(point, size);
+                let point= Point::new((i as f32) *cell_width + MARGIN, (j as f32)*cell_height + MARGIN);
+                let size = Size::new(
+                    cell_width - 2.*MARGIN,
+                    cell_height - 2.*MARGIN,
+                );
+                let cell_content = Path::rectangle(point, size);
+                (cell_background, cell_content)
+            };
+
+            let cells = self.cells.0;
+            for i in 0..cells.len() {
+                for j in 0..cells[i].len() {
+                    let (cell_background, cell_content) = get_cell_fill(i, j);
+                    frame.fill(&cell_background, Color::BLACK);
+                    frame.fill(&cell_content, Color::WHITE);
+                }
+            }
+
+            if let Some(Dices(x, y)) = self.dices {
+                let dices_field = (0..x).flat_map(move |i| (0..y).map(move |j| get_cell_fill(i.into(), j.into())));
+                for (cell_background, cell_content) in dices_field {
+                    frame.fill(&cell_background, Color::from_rgb(0.9, 0.9, 0.9));
+                    frame.fill(&cell_content, Color::from_rgb(1., 0., 0.));
+                }
             }
         });
         vec![x]
@@ -72,8 +96,8 @@ fn color_changed(player: Player, x: usize, y: usize) -> Message {
 
 impl Application for Game {
     type Executor = iced::executor::Default;
-    type Flags = ();
     type Message = Message;
+    type Flags = ();
 
     fn new(_: Self::Flags) -> (Self, Command<Self::Message>) {
         (
@@ -99,13 +123,13 @@ impl Application for Game {
     fn update(
         &mut self,
         message: Self::Message,
-        clipboard: &mut Clipboard,
+        _: &mut Clipboard,
     ) -> Command<Self::Message> {
         match message {
             Message::ThrowDices => {
                 let new_dices: u8 = random();
-                let dice1 = (new_dices >> 4) % 5 + 1;
-                let dice2 = new_dices % 5 + 1;
+                let dice1 = (new_dices >> 4) % 6 + 1;
+                let dice2 = new_dices % 6 + 1;
                 self.state.drawing.dices = Some(Dices(dice1, dice2))
             },
             _ => {},
